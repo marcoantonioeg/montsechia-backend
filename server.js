@@ -3,7 +3,7 @@ const Stripe = require('stripe');
 const cors = require('cors');
 
 const app = express();
-const stripe = Stripe('sk_test_51QLrGR00HjbbLtoKeFrgy8SbOwk7jDO0rhzdM1ipalrsmmKrQXuTmWDSWZR6v8TZiVZ5oy9bs2GhDkHIC8LJOWgI00FiWgmspc'); // Usa tu clave privada de Stripe
+const stripe = Stripe('sk_test_51QLrGR00HjbbLtoKeFrgy8SbOwk7jDO0rhzdM1ipalrsmmKrQXuTmWDSWZR6v8TZiVZ5oy9bs2GhDkHIC8LJOWgI00FiWgmspc'); // Clave en texto plano
 
 app.use(cors());
 app.use(express.json());
@@ -35,6 +35,8 @@ app.post('/create-checkout-session', async (req, res) => {
   }
 });
 
-app.listen(3001, () => {
-  console.log('Servidor backend corriendo en http://localhost:3001');
+// 🔹 Usa el puerto de Railway o 3001 en local
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log(`Servidor backend corriendo en el puerto ${PORT}`);
 });
