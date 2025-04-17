@@ -246,13 +246,14 @@ app.post('/create-checkout-session', async (req, res) => {
           description: [
             item.molduraNota ? `Moldura: ${item.molduraNota}` : null,
             item.postalNota ? `Postal: ${item.postalNota}` : null,
-            item.floresSeleccionadas ? `Flores: ${item.floresSeleccionadas.map(f => f.alt).join(', ')}` : null,
+            (item.floresSeleccionadas && item.floresSeleccionadas.length > 0) ? 
+              `Flores: ${item.floresSeleccionadas.map(f => f.alt || f.color || 'Flor').join(', ')}` : null,
             item.notaPersonalizada ? `Nota: ${item.notaPersonalizada}` : null,
             item.nombrePersonalizado ? `Nombre: ${item.nombrePersonalizado}` : null,
             item.fotoId ? `Foto Instax: ${item.fotoId}` : null,
             item.enmarcarFotoId ? `Foto Enmarcar: ${item.enmarcarFotoId}` : null,
-            item.imageUrl ? 'Incluye foto postal personalizada' : null,
-            item.enmarcarImageUrl ? 'Incluye foto para enmarcar' : null
+            item.imageUrl ? ` ${item.imageUrl}` : null,
+            item.enmarcarImageUrl ? ` ${item.imageUrl}` : null
           ].filter(Boolean).join(' | '),
           images: item.image ? [item.image] : ['/images/default.png'],
         },
