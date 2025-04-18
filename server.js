@@ -238,34 +238,44 @@ app.post('/create-checkout-session', async (req, res) => {
   try {
     const { cart } = req.body;
 
-    const lineItems = cart.map(item => ({
-      price_data: {
-        currency: 'mxn',
-        product_data: {
-          name: item.name,
-          description: [
-            item.molduraNota ? `Moldura: ${item.molduraNota}` : null,
-            item.postalNota ? `Postal: ${item.postalNota}` : null,
-            (item.floresSeleccionadas && item.floresSeleccionadas.length > 0) ? 
-              `Flores: ${item.floresSeleccionadas.map(f => f.alt || f.color || 'Flor').join(', ')}` : null,
-            item.notaPersonalizada ? `Nota: ${item.notaPersonalizada}` : null,
-            item.nombrePersonalizado ? `Nombre: ${item.nombrePersonalizado}` : null,
-            item.fotoId ? `Foto Instax: ${item.fotoId}` : null,
-            item.enmarcarFotoId ? `Foto Enmarcar: ${item.enmarcarFotoId}` : null,
-            item.imageUrl ? ` ${item.imageUrl}` : null,
-            item.enmarcarImageUrl ? ` ${item.imageUrl}` : null
-          ].filter(Boolean).join(' | '),
-          images: item.image ? [item.image] : ['/images/default.png'],
+    const lineItems = cart.map(item => {
+      // Construir la descripción
+      let descriptionParts = [
+        item.molduraNota ? `Moldura: ${item.molduraNota}` : null,
+        item.postalNota ? `Postal: ${item.postalNota}` : null,
+        (item.floresSeleccionadas && item.floresSeleccionadas.length > 0) ? 
+          `Flores: ${item.floresSeleccionadas.map(f => f.alt || f.color || 'Flor').join(', ')}` : null,
+        item.notaPersonalizada ? `Nota: ${item.notaPersonalizada}` : null,
+        item.nombrePersonalizado ? `Nombre: ${item.nombrePersonalizado}` : null,
+        item.fotoId ? `Foto Instax: ${item.fotoId}` : null,
+        item.enmarcarFotoId ? `Foto Enmarcar: ${item.enmarcarFotoId}` : null,
+        item.imageUrl ? ` ${item.imageUrl}` : null,
+        item.enmarcarImageUrl ? ` ${item.imageUrl}` : null
+      ].filter(Boolean);
+
+      // Si no hay partes de descripción, usar la descripción del producto o su nombre
+      const description = descriptionParts.length > 0 
+        ? descriptionParts.join(' | ')
+        : item.description || item.name;
+
+      return {
+        price_data: {
+          currency: 'mxn',
+          product_data: {
+            name: item.name,
+            description: description, // Asegurarse de que nunca esté vacío
+            images: item.image ? [item.image] : ['/images/default.png'],
+          },
+          unit_amount: Math.round(item.price * 100),
         },
-        unit_amount: Math.round(item.price * 100),
-      },
-      quantity: item.quantity || 1,
-    }));
+        quantity: item.quantity || 1,
+      };
+    });
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       phone_number_collection: {
-        enabled: true // Hace obligatorio el número de teléfono
+        enabled: true
       },
       shipping_address_collection: { 
         allowed_countries: ['MX', 'US', 'CA'] 
