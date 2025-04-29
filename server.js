@@ -5,7 +5,7 @@ const cors = require('cors');
 const fileUpload = require('express-fileupload');
 const cloudinary = require('cloudinary').v2;
 const app = express();
-const stripe = Stripe('sk_test_51QLrGR00HjbbLtoKeFrgy8SbOwk7jDO0rhzdM1ipalrsmmKrQXuTmWDSWZR6v8TZiVZ5oy9bs2GhDkHIC8LJOWgI00FiWgmspc');
+const stripe = Stripe('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');
 
 // Configuración de Cloudinary mejorada
 cloudinary.config({
