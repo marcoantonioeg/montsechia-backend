@@ -250,7 +250,7 @@ app.post('/create-checkout-session', async (req, res) => {
         item.fotoId ? `Foto Instax: ${item.fotoId}` : null,
         item.enmarcarFotoId ? `Foto Enmarcar: ${item.enmarcarFotoId}` : null,
         item.imageUrl ? ` ${item.imageUrl}` : null,
-        item.enmarcarImageUrl ? ` ${item.imageUrl}` : null
+        item.enmarcarImageUrl ? ` ${item.enmarcarFotoId}` : null
       ].filter(Boolean);
 
       // Si no hay partes de descripción, usar la descripción del producto o su nombre
