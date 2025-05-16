@@ -87,16 +87,45 @@ app.get('/products/:id', async (req, res) => {
   try {
     const product = await stripe.products.retrieve(req.params.id);
     const price = await stripe.prices.list({ product: product.id, limit: 1 });
-    
+
     const formattedProduct = {
       ...product,
       price: price.data[0]?.unit_amount / 100 || 0,
       priceId: price.data[0]?.id || null
     };
-    
+
     res.json(formattedProduct);
   } catch (error) {
     res.status(404).json({ error: 'Producto no encontrado' });
+  }
+});
+
+// Endpoint: Obtener 4 productos aleatorios
+app.get('/products/random', async (req, res) => {
+  try {
+    const products = await stripe.products.list({ limit: 100 });
+    const prices = await stripe.prices.list({ limit: 100 });
+
+    const formattedProducts = products.data.map(product => {
+      const price = prices.data.find(p => p.product === product.id);
+      return {
+        id: product.id,
+        name: product.name,
+        description: product.description || 'Sin descripción',
+        images: product.images,
+        price: price?.unit_amount / 100 || 0,
+        priceId: price?.id || null,
+        metadata: product.metadata
+      };
+    });
+
+    const shuffled = formattedProducts.sort(() => 0.5 - Math.random());
+    const randomProducts = shuffled.slice(0, 4);
+
+    res.json(randomProducts);
+  } catch (error) {
+    console.error('Error al obtener productos aleatorios:', error);
+    res.status(500).send({ error: error.message });
   }
 });
 
@@ -117,7 +146,7 @@ app.post('/create-ephemeral-key', async (req, res) => {
 // Endpoint para subir imágenes con manejo de sesión
 app.post('/upload-image', async (req, res) => {
   console.log('Accediendo a /upload-image');
-  
+
   try {
     if (!req.files || Object.keys(req.files).length === 0) {
       console.warn('No se recibieron archivos en la solicitud');
@@ -163,11 +192,10 @@ app.post('/upload-image', async (req, res) => {
       folder: folderName,
       resource_type: 'auto',
       transformation: [
-  { width: 1200, height: 1200, crop: 'limit' },
-  { quality: 'auto:best' },
-  { fetch_format: 'auto' }
-],
-
+        { width: 1200, height: 1200, crop: 'limit' },
+        { quality: 'auto:best' },
+        { fetch_format: 'auto' }
+      ],
       allowed_formats: ['jpg', 'png', 'webp'],
       context: `tipo=${tipoImagen}|nota=${tipoImagen === 'enmarcar' ? 'Foto para enmarcar' : 'Foto postal'}`
     };
@@ -191,12 +219,11 @@ app.post('/upload-image', async (req, res) => {
         console.error('Error en el stream:', error);
         reject(error);
       });
-      
+
       bufferStream.end(image.data);
       bufferStream.pipe(uploadStream);
     });
 
-    // Almacenar imagen como pendiente si hay sessionId
     if (sessionId) {
       if (!pendingImages.has(sessionId)) {
         pendingImages.set(sessionId, []);
@@ -249,7 +276,7 @@ app.post('/create-checkout-session', async (req, res) => {
       let descriptionParts = [
         item.molduraNota ? `Moldura: ${item.molduraNota}` : null,
         item.postalNota ? `Postal: ${item.postalNota}` : null,
-        (item.floresSeleccionadas && item.floresSeleccionadas.length > 0) ? 
+        (item.floresSeleccionadas && item.floresSeleccionadas.length > 0) ?
           `Flores: ${item.floresSeleccionadas.map(f => f.alt || f.color || 'Flor').join(', ')}` : null,
         item.notaPersonalizada ? `Nota: ${item.notaPersonalizada}` : null,
         item.nombrePersonalizado ? `Nombre: ${item.nombrePersonalizado}` : null,
@@ -259,7 +286,7 @@ app.post('/create-checkout-session', async (req, res) => {
         item.enmarcarImageUrl ? ` ${item.enmarcarImageUrl}` : null
       ].filter(Boolean);
 
-      const description = descriptionParts.length > 0 
+      const description = descriptionParts.length > 0
         ? descriptionParts.join(' | ')
         : item.description || item.name;
 
@@ -282,8 +309,8 @@ app.post('/create-checkout-session', async (req, res) => {
       phone_number_collection: {
         enabled: true
       },
-      shipping_address_collection: { 
-        allowed_countries: ['MX', 'US', 'CA'] 
+      shipping_address_collection: {
+        allowed_countries: ['MX', 'US', 'CA']
       },
       shipping_options: [{
         shipping_rate_data: {
@@ -302,21 +329,21 @@ app.post('/create-checkout-session', async (req, res) => {
       cancel_url: `${req.headers.origin}/cancel`,
     });
 
-    res.json({ 
+    res.json({
       sessionId: session.id,
-      publicId: cart.find(item => item.fotoId || item.enmarcarFotoId)?.fotoId || cart.find(item => item.enmarcarFotoId)?.enmarcarFotoId 
+      publicId: cart.find(item => item.fotoId || item.enmarcarFotoId)?.fotoId || cart.find(item => item.enmarcarFotoId)?.enmarcarFotoId
     });
   } catch (error) {
     console.error('Error en checkout:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: error.message,
-      details: error.type || 'StripeError' 
+      details: error.type || 'StripeError'
     });
   }
 });
 
 // Webhook para manejar eventos de pago
-app.post('/webhook', express.raw({type: 'application/json'}), async (req, res) => {
+app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
   let event;
 
@@ -336,22 +363,20 @@ app.post('/webhook', express.raw({type: 'application/json'}), async (req, res) =
       const session = event.data.object;
       console.log(`✅ Pago exitoso para: ${session.customer_email || 'Anónimo'}`);
       console.log(`📞 Teléfono del cliente: ${session.customer_details.phone}`);
-      
-      // Eliminar de pendientes si existe
+
       if (pendingImages.has(session.id)) {
         pendingImages.delete(session.id);
       }
       break;
-      
+
     case 'checkout.session.expired':
     case 'payment_intent.payment_failed':
       const failedSession = event.data.object;
       console.error(`❌ Pago fallido: ${failedSession.last_payment_error?.message || 'Sin detalles'}`);
-      
-      // Eliminar imágenes asociadas si existen
+
       if (pendingImages.has(failedSession.id)) {
         const publicIds = pendingImages.get(failedSession.id);
-        
+
         for (const publicId of publicIds) {
           try {
             await cloudinary.uploader.destroy(publicId);
@@ -360,11 +385,11 @@ app.post('/webhook', express.raw({type: 'application/json'}), async (req, res) =
             console.error(`Error eliminando imagen ${publicId}:`, error);
           }
         }
-        
+
         pendingImages.delete(failedSession.id);
       }
       break;
-      
+
     default:
       console.log(`🔔 Evento no manejado: ${event.type}`);
   }
@@ -372,15 +397,14 @@ app.post('/webhook', express.raw({type: 'application/json'}), async (req, res) =
   res.json({ received: true });
 });
 
-// Limpieza periódica de imágenes pendientes (ejecutar cada hora)
+// Limpieza periódica de imágenes pendientes (cada hora)
 setInterval(async () => {
   const now = Date.now();
-  const oneDay = 24 * 60 * 60 * 1000; // 24 horas
-  
+  const oneDay = 24 * 60 * 60 * 1000;
+
   for (const [sessionId, publicIds] of pendingImages) {
     const session = await stripe.checkout.sessions.retrieve(sessionId);
-    
-    // Si la sesión es muy antigua o ya expiró, limpiar
+
     if ((now - session.created * 1000) > oneDay || session.status === 'expired') {
       for (const publicId of publicIds) {
         try {
@@ -393,7 +417,7 @@ setInterval(async () => {
       pendingImages.delete(sessionId);
     }
   }
-}, 60 * 60 * 1000); // Cada hora
+}, 60 * 60 * 1000);
 
 // Iniciar servidor
 const PORT = process.env.PORT || 3001;
