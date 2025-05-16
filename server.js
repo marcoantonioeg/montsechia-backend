@@ -163,10 +163,11 @@ app.post('/upload-image', async (req, res) => {
       folder: folderName,
       resource_type: 'auto',
       transformation: [
-        { width: 1200, height: 1200, crop: 'limit' },
-        { quality: 'auto:best' },
-        { fetch_format: 'auto' }
-      ],
+  { width: 1200, height: 1200, crop: 'limit' },
+  { quality: 'auto:best' },
+  { fetch_format: 'auto' }
+],
+
       allowed_formats: ['jpg', 'png', 'webp'],
       context: `tipo=${tipoImagen}|nota=${tipoImagen === 'enmarcar' ? 'Foto para enmarcar' : 'Foto postal'}`
     };
