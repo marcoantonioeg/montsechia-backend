@@ -24,7 +24,7 @@ app.use(cors({
 app.use(express.json());
 app.use(fileUpload({
   useTempFiles: false,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 20 * 1024 * 1024 }, // MODIFICADO: 5MB → 20MB
   abortOnLimit: true,
   createParentPath: true
 }));
@@ -146,11 +146,11 @@ app.post('/upload-image', async (req, res) => {
       });
     }
 
-    if (image.size > 5 * 1024 * 1024) {
+    if (image.size > 20 * 1024 * 1024) { // MODIFICADO: 5MB → 20MB
       console.warn(`Imagen demasiado grande: ${image.size} bytes`);
       return res.status(400).json({
         success: false,
-        error: 'La imagen no puede exceder los 5MB'
+        error: 'La imagen no puede exceder los 20MB'
       });
     }
 
