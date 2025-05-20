@@ -1,4 +1,10 @@
 {
+  "name": "montsechia",  // ✔️ Nombre del proyecto (obligatorio)
+  "version": "1.0.0",
+  "main": "server.js",  // ✔️ Punto de entrada (opcional pero recomendado)
+  "scripts": {
+    "start": "node server.js"  // ✔️ Comando principal (asegúrate de que coincide con tu archivo)
+  },
   "dependencies": {
     "cloudinary": "^2.6.0",
     "cors": "^2.8.5",
@@ -8,7 +14,7 @@
     "express-fileupload": "^1.5.1",
     "stripe": "^17.7.0"
   },
-   "scripts": {
-    "start": "node server.js"
+  "engines": {
+    "node": "18.x"  // ✔️ Versión de Node.js (ajusta a la que uses, ej. "16.x", "20.x")
   }
 }
