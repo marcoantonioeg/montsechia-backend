@@ -5,13 +5,13 @@ const cors = require('cors');
 const fileUpload = require('express-fileupload');
 const cloudinary = require('cloudinary').v2;
 const app = express();
-const stripe = Stripe('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');
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
 // Configuración de Cloudinary mejorada
 cloudinary.config({
-  cloud_name: 'dme0lnsrj',
-  api_key: '595832238468122',
-  api_secret: 'LvfbjXaaeoBbsahM1cBEYztDLkY',
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
   secure: true
 });
 
