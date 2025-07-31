@@ -15,6 +15,8 @@ cloudinary.config({
   secure: true
 });
 
+
+
 // Middlewares con configuración mejorada
 app.use(cors({
   origin: '*',
