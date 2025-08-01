@@ -15,8 +15,6 @@ cloudinary.config({
   secure: true
 });
 
-
-
 // Middlewares con configuración mejorada
 app.use(cors({
   origin: '*',
@@ -235,10 +233,10 @@ app.get('/image-proxy/:fileId', async (req, res) => {
   }
 });
 
-// Endpoint: Crear sesión de checkout con teléfono obligatorio
+// Endpoint: Crear sesión de checkout con teléfono obligatorio y soporte para códigos de descuento
 app.post('/create-checkout-session', async (req, res) => {
   try {
-    const { cart } = req.body;
+    const { cart, discountCode } = req.body;
 
     const lineItems = cart.map(item => {
       // Construir la descripción
@@ -274,7 +272,8 @@ app.post('/create-checkout-session', async (req, res) => {
       };
     });
 
-    const session = await stripe.checkout.sessions.create({
+    // Configuración base de la sesión
+    const sessionParams = {
       payment_method_types: ['card'],
       phone_number_collection: {
         enabled: true
@@ -297,8 +296,25 @@ app.post('/create-checkout-session', async (req, res) => {
       mode: 'payment',
       success_url: `${req.headers.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.origin}/cancel`,
-    });
+    };
 
+    // Si hay un código de descuento, aplicarlo
+    if (discountCode) {
+      try {
+        // Verificar y aplicar el código de descuento
+        const coupon = await stripe.coupons.retrieve(discountCode);
+        
+        // Si el cupón existe, agregarlo a la sesión
+        sessionParams.discounts = [{
+          coupon: discountCode
+        }];
+      } catch (error) {
+        // Si el cupón no es válido, continuar sin descuento
+        console.warn(`Código de descuento no válido: ${discountCode}`);
+      }
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
     res.json({ sessionId: session.id });
   } catch (error) {
     console.error('Error en checkout:', error);
