@@ -24,7 +24,7 @@ app.use(cors({
 app.use(express.json());
 app.use(fileUpload({
   useTempFiles: false,
-  limits: { fileSize: 20 * 1024 * 1024 }, // MODIFICADO: 5MB → 20MB
+  limits: { fileSize: 20 * 1024 * 1024 },
   abortOnLimit: true,
   createParentPath: true
 }));
@@ -146,7 +146,7 @@ app.post('/upload-image', async (req, res) => {
       });
     }
 
-    if (image.size > 20 * 1024 * 1024) { // MODIFICADO: 5MB → 20MB
+    if (image.size > 20 * 1024 * 1024) {
       console.warn(`Imagen demasiado grande: ${image.size} bytes`);
       return res.status(400).json({
         success: false,
@@ -233,14 +233,24 @@ app.get('/image-proxy/:fileId', async (req, res) => {
   }
 });
 
-// Endpoint: Crear sesión de checkout con teléfono obligatorio y soporte para códigos de descuento
-// Endpoint: Crear sesión de checkout con teléfono obligatorio
+// Endpoint: Crear sesión de checkout unificado
 app.post('/create-checkout-session', async (req, res) => {
   try {
     const { cart } = req.body;
 
     const lineItems = cart.map(item => {
-      // Construir la descripción
+      // Función para determinar el precio basado en la moldura (del local)
+      const getFinalPrice = (item) => {
+        // Si el item tiene la propiedad isUnframed o molduraNota indica "Sin Marco"
+        if (item.isUnframed || item.molduraNota === 'Sin Marco') {
+          return 899; // Precio especial para "Sin Marco"
+        }
+        return item.price; // Precio normal
+      };
+
+      const finalPrice = getFinalPrice(item);
+      
+      // Construir la descripción (combinada de ambas versiones)
       let descriptionParts = [
         item.molduraNota ? `Moldura: ${item.molduraNota}` : null,
         item.postalNota ? `Postal: ${item.postalNota}` : null,
@@ -251,7 +261,9 @@ app.post('/create-checkout-session', async (req, res) => {
         item.fotoId ? `Foto Instax: ${item.fotoId}` : null,
         item.enmarcarFotoId ? `Foto Enmarcar: ${item.enmarcarFotoId}` : null,
         item.imageUrl ? ` ${item.imageUrl}` : null,
-        item.enmarcarImageUrl ? ` ${item.enmarcarImageUrl}` : null
+        item.enmarcarImageUrl ? ` ${item.enmarcarImageUrl}` : null,
+        // Añadir nota sobre precio especial si aplica (del local)
+        (item.isUnframed || item.molduraNota === 'Sin Marco') ? 'Precio especial sin marco' : null
       ].filter(Boolean);
 
       // Si no hay partes de descripción, usar la descripción del producto o su nombre
@@ -264,10 +276,17 @@ app.post('/create-checkout-session', async (req, res) => {
           currency: 'mxn',
           product_data: {
             name: item.name,
-            description: description, // Asegurarse de que nunca esté vacío
+            description: description,
             images: item.image ? [item.image] : ['/images/default.png'],
+            // Metadata extendida (del local)
+            metadata: {
+              ...item.metadata,
+              isUnframed: item.isUnframed || false,
+              originalPrice: item.originalPrice || item.price,
+              molduraType: item.molduraNota || 'Con Marco'
+            }
           },
-          unit_amount: Math.round(item.price * 100),
+          unit_amount: Math.round(finalPrice * 100), // Usar el precio ajustado
         },
         quantity: item.quantity || 1,
       };
@@ -294,7 +313,7 @@ app.post('/create-checkout-session', async (req, res) => {
       }],
       line_items: lineItems,
       mode: 'payment',
-      allow_promotion_codes: true, // ÚNICO CAMBIO: Hace visible el campo de cupón
+      allow_promotion_codes: true, // Del servidor - Hace visible el campo de cupón
       success_url: `${req.headers.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.origin}/cancel`,
     });
@@ -342,7 +361,7 @@ app.post('/webhook', express.raw({type: 'application/json'}), (req, res) => {
 
   res.json({ received: true });
 });
-//update server
+
 // Iniciar servidor
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
