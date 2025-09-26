@@ -7,6 +7,7 @@ const cloudinary = require('cloudinary').v2;
 const app = express();
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
+
 // Configuración de Cloudinary mejorada
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
