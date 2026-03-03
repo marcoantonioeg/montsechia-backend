@@ -7,7 +7,6 @@ const cloudinary = require('cloudinary').v2;
 const app = express();
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
-
 // Configuración de Cloudinary mejorada
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -234,13 +233,15 @@ app.get('/image-proxy/:fileId', async (req, res) => {
   }
 });
 
-// Endpoint: Crear sesión de checkout unificado
+// Endpoint: Crear sesión de checkout con teléfono obligatorio
 app.post('/create-checkout-session', async (req, res) => {
   try {
     const { cart } = req.body;
+    
+    let totalCartAmount = 0; // Variable para ir sumando el total del carrito
 
     const lineItems = cart.map(item => {
-      // Función para determinar el precio basado en la moldura (del local)
+      // Función para determinar el precio basado en la moldura
       const getFinalPrice = (item) => {
         // Si el item tiene la propiedad isUnframed o molduraNota indica "Sin Marco"
         if (item.isUnframed || item.molduraNota === 'Sin Marco') {
@@ -250,8 +251,12 @@ app.post('/create-checkout-session', async (req, res) => {
       };
 
       const finalPrice = getFinalPrice(item);
+      const quantity = item.quantity || 1;
       
-      // Construir la descripción (combinada de ambas versiones)
+      // Acumulamos el valor total en MXN para calcular el envío después
+      totalCartAmount += finalPrice * quantity;
+      
+      // Construir la descripción
       let descriptionParts = [
         item.molduraNota ? `Moldura: ${item.molduraNota}` : null,
         item.postalNota ? `Postal: ${item.postalNota}` : null,
@@ -263,7 +268,7 @@ app.post('/create-checkout-session', async (req, res) => {
         item.enmarcarFotoId ? `Foto Enmarcar: ${item.enmarcarFotoId}` : null,
         item.imageUrl ? ` ${item.imageUrl}` : null,
         item.enmarcarImageUrl ? ` ${item.enmarcarImageUrl}` : null,
-        // Añadir nota sobre precio especial si aplica (del local)
+        // Añadir nota sobre precio especial si aplica
         (item.isUnframed || item.molduraNota === 'Sin Marco') ? 'Precio especial sin marco' : null
       ].filter(Boolean);
 
@@ -279,7 +284,6 @@ app.post('/create-checkout-session', async (req, res) => {
             name: item.name,
             description: description,
             images: item.image ? [item.image] : ['/images/default.png'],
-            // Metadata extendida (del local)
             metadata: {
               ...item.metadata,
               isUnframed: item.isUnframed || false,
@@ -289,7 +293,7 @@ app.post('/create-checkout-session', async (req, res) => {
           },
           unit_amount: Math.round(finalPrice * 100), // Usar el precio ajustado
         },
-        quantity: item.quantity || 1,
+        quantity: quantity,
       };
     });
 
@@ -304,8 +308,12 @@ app.post('/create-checkout-session', async (req, res) => {
       shipping_options: [{
         shipping_rate_data: {
           type: 'fixed_amount',
-          fixed_amount: { amount: 0, currency: 'mxn' },
-          display_name: 'Envío estándar',
+          fixed_amount: { 
+            // Si el total es 999 o más, cobra 0. Si es menor, cobra 9900 centavos ($99 MXN)
+            amount: totalCartAmount >= 999 ? 0 : 9900, 
+            currency: 'mxn' 
+          },
+          display_name: totalCartAmount >= 999 ? 'Envío gratis' : 'Envío estándar',
           delivery_estimate: {
             minimum: { unit: 'business_day', value: 1 },
             maximum: { unit: 'business_day', value: 3 },
@@ -314,7 +322,6 @@ app.post('/create-checkout-session', async (req, res) => {
       }],
       line_items: lineItems,
       mode: 'payment',
-      allow_promotion_codes: true, // Del servidor - Hace visible el campo de cupón
       success_url: `${req.headers.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.origin}/cancel`,
     });
