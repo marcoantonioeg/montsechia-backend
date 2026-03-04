@@ -245,9 +245,48 @@ app.post('/create-checkout-session', async (req, res) => {
       const getFinalPrice = (item) => {
         // Si el item tiene la propiedad isUnframed o molduraNota indica "Sin Marco"
         if (item.isUnframed || item.molduraNota === 'Sin Marco') {
-          return 899; // Precio especial para "Sin Marco"
+          // Listas de IDs con sus respectivos precios base
+          const ids999 = [
+            'prod_SDnJNhM8rFrbNB', 'prod_SDnJRu7JzXjQib', 'prod_SDnJI0wluNOk7J', 'prod_SDnJqmr3Qzjl9Q'
+          ];
+          const ids799 = [
+            'prod_SDnKtCxiBZ3bnL', 'prod_SDnKmeSG54q181', 'prod_SDnJ4RqAhL1CwI', 'prod_SDnJN6agw0gzDt', 
+            'prod_SDnJ88ttOugcVe', 'prod_SDnJVC8CnPwde4', 'prod_SDnJHZqhV4OtYy', 'prod_SDnJlwwQm29S7r'
+          ];
+          const ids699 = [
+            'prod_TtCgEupmwWlegp', 'prod_SDnIdxmRUf5SmH', 'prod_SDnJn7TQOtrV0a', 'prod_SDnJ1k348uftfi', 
+            'prod_SDnJtoRzUytq3B', 'prod_SDnJxNwVML1JbZ', 'prod_SDnJ1TV6Bjc3S2', 'prod_SDnK6pQr5tXigJ', 
+            'prod_SDnKk35orh19a3', 'prod_SVgVm2Xy2c58s8', 'prod_SVgYDk5xqh1jGd', 'prod_SVgbtTg0Uug7Sw', 
+            'prod_SVgbOdIZuHblCy', 'prod_SjkxniXVA4i8oq', 'prod_SjkyEAiFYVsQXE', 'prod_Sjl4BdNcXaejyp', 
+            'prod_Sn7YD21HFqFQP3', 'prod_Sn7YAvP5f7mJFb', 'prod_Sn7ZqXeVyMmVoH', 'prod_TtCfToeoyJiCCo', 
+            'prod_TtCfVZzk6lVEfP', 'prod_TtCfoYXHyFNjyR'
+          ];
+
+          let basePrice = item.originalPrice || 899; // Fallback por defecto
+
+          // Asignar el precio base correcto según el ID
+          if (ids999.includes(item.id)) {
+            basePrice = 999;
+          } else if (ids799.includes(item.id)) {
+            basePrice = 799;
+          } else if (ids699.includes(item.id)) {
+            basePrice = 699;
+          }
+
+          // Rescatar los extras sumados en el front (sostenedor, instax) para no perderlos
+          let extras = 0;
+          if (item.originalPrice && item.price > item.originalPrice) {
+            extras = item.price - item.originalPrice;
+          } else if (item.upsells) {
+            if (item.upsells.instax) extras += 39;
+            if (item.upsells.sostenedor) extras += 59;
+          }
+
+          return basePrice + extras;
         }
-        return item.price; // Precio normal
+        
+        // Precio normal para enmarcados y retratos
+        return item.price;
       };
 
       const finalPrice = getFinalPrice(item);
